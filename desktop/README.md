@@ -13,13 +13,19 @@ running copy stays on `127.0.0.1:__APP_PORT_PROD__` until the user refreshes.
 | `updater/UpdateReadyNotice.tsx` | Bottom-left notice to copy into the Next.js app |
 | `resources/node/` | Node 22 runtime OTA bundles run on (generated, not committed) |
 | `resources/seed-bundle/` | App bundle copied into the DMG / NSIS installer (`version` + `bundle.zip`, generated, not committed) |
-| `src/main/index.mjs` | App lifecycle, single instance, dev vs. launcher mode |
+| `shell.config.json` | Shell behaviour: tray, multiple windows, close/quit. Written by `pnpm shell:config` |
+| `src/main/index.mjs` | Loads the shell config, then app lifecycle and dev vs. launcher mode |
 | `src/main/startup.mjs` | Boot sequence, status publishing, refresh + rollback |
 | `src/main/bundle-manager.mjs` | Seed install, background OTA, verify, extract, prune |
 | `src/main/api-bridge.mjs` | Spawns the bundle's server, owns the port, waits for health |
 | `src/main/crypto.mjs` | Ed25519 public keys (must match the release signing keys) |
 | `src/main/zip.mjs` | Dependency-free zip reader (zip-slip, symlink and CRC checks) |
-| `src/main/window.mjs` | The single window, launcher page → server navigation |
+| `src/main/shell/options.mjs` | The option schema: defaults, validation, presets (no Electron import) |
+| `src/main/shell/lifecycle.mjs` | Where options become behaviour — the one place to wire a new one |
+| `src/main/shell/windows.mjs` | Window manager: one or many, geometry, close-vs-hide, navigation |
+| `src/main/shell/tray.mjs` | Tray icon and menu, including "Restart Now" for a pending update |
+| `src/main/shell/menu.mjs` | macOS menu bar with New Window; no menu bar elsewhere |
+| `src/main/shell/accelerator.mjs` | New Window chord matching where there is no menu bar |
 | `src/preload/bridge.js` | The only renderer-facing API (`window.desktopOta`) |
 | `electron-builder.yml` | DMG / NSIS packaging, extraResources, signing, notarization |
 | `test/` | Unit tests for the zip reader and version ordering |
@@ -39,6 +45,22 @@ so an installed release app can keep `__APP_PORT_PROD__`. To exercise the real b
 
 ```bash
 __APP_SLUG_UPPER___DEV_BOOT=1 pnpm --dir desktop dev
+```
+
+## Shell options
+
+```bash
+pnpm shell:config            # wizard
+pnpm shell:config --list     # current values, with warnings
+```
+
+Tray, multiple windows, what the close button does and whether the last window closing quits all
+come from `shell.config.json`. See [`docs/SHELL_OPTIONS.md`](../docs/SHELL_OPTIONS.md).
+
+To try a configuration without writing the file:
+
+```bash
+__APP_SLUG_UPPER___SHELL_CONFIG=/tmp/try.json pnpm --dir desktop dev
 ```
 
 ## Test

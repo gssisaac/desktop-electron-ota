@@ -35,4 +35,12 @@ contextBridge.exposeInMainWorld('desktopOta', {
   applyPendingUpdate: () => call('ota:apply-pending-update'),
   /** App: manifest URL, active version, pending version, seeded version. */
   otaStatus: () => call('ota:status'),
+
+  /**
+   * App: how this shell is configured (tray, multiWindow, close behaviour, how many windows are
+   * open). Lets the UI show a New Window control only where the shell actually allows one.
+   */
+  shellOptions: () => call('shell:options'),
+  /** App: open another window. Rejects when `windows.multiWindow` is off or the cap is reached. */
+  openNewWindow: () => call('shell:new-window'),
 });

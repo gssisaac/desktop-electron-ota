@@ -20,6 +20,11 @@ function desktopOta(): DesktopOta | null {
  *
  * No dependency on the desktop shell: it reads `window.desktopOta`, which only the launcher's
  * preload defines, so the same component is a no-op on the web.
+ *
+ * With `windows.multiWindow` on, every window mounts its own copy and each shows the notice;
+ * Refresh from any one of them restarts the server and reloads them all. A shell configured with
+ * a tray also offers the same update from the tray menu, which is the only route when the app
+ * launched in the background with no window.
  */
 export function UpdateReadyNotice() {
   const [version, setVersion] = useState<string | null>(null);

@@ -56,7 +56,10 @@ Pick ports that do not collide with other local apps.
 6. Replace icons: `desktop/build/icon.icns`, `icon.ico`, `icon.png`, and
    `desktop/launcher/icon.png`.
 7. Run `corepack enable && pnpm --dir desktop install`.
-8. Run `pnpm test:desktop` — the zip reader and version ordering must pass before any release.
+8. Choose the shell behaviour: `pnpm shell:config` (wizard) or `pnpm shell:config --preset <name>`.
+   Skip it to keep the default single-window shell. See **Shell options** below.
+9. Run `pnpm test:desktop` — the zip reader, version ordering and shell option validation must
+   pass before any release.
 
 ## Wire the Next.js `app/` package
 
@@ -111,6 +114,40 @@ answer. Two optional env vars tighten it per product:
 | `{__APP_SLUG_UPPER___SMOKE_PATHS}` | Comma-separated extra routes that must return 2xx |
 | `{__APP_SLUG_UPPER___SMOKE_DATA_FILE}` | File the server must create under `{UPPER}_HOME`, e.g. `data/app.db` |
 
+## Shell options
+
+Tray icon, multiple windows, what the close button does and whether the last window closing quits
+the app are **configuration, not code**: `desktop/shell.config.json`, applied in
+`desktop/src/main/shell/`. Set it while scaffolding, change it any time afterwards.
+
+```bash
+pnpm shell:config                      # wizard: start from a preset, then fine-tune
+pnpm shell:config --preset tray-app    # or apply one directly
+pnpm shell:config --set windows.multiWindow=true --set windows.onLastWindowClosed=keepRunning
+pnpm shell:config --list               # current values, with warnings
+```
+
+| Preset | Behaviour |
+|--------|-----------|
+| `single-window` | One window; closing it exits. The default, matching the Tauri variant. |
+| `multi-window` | `Cmd/Ctrl+N` opens another window; closing them all exits. |
+| `tray-app` | Tray icon; close hides the window and the app stays resident. |
+| `menu-bar-only` | Tray only: launches with no window and no macOS dock icon. |
+
+The option set, defaults, coercion, validation and presets all come from the descriptor table in
+[`desktop/src/main/shell/options.mjs`](desktop/src/main/shell/options.mjs). That one table also
+drives the wizard, `--set`, `--list` and the docs table (`pnpm shell:config --markdown`), so **to
+add an option, add a descriptor there and handle it in
+[`shell/lifecycle.mjs`](desktop/src/main/shell/lifecycle.mjs)** — nothing else needs to change.
+
+Configurations that would leave the app with no window and no way to open one (a tray-less
+background launch, a hidden dock with no tray) are refused by the CLI, and the launcher falls back
+at runtime if the file says so anyway. Full reference:
+[`docs/SHELL_OPTIONS.md`](docs/SHELL_OPTIONS.md).
+
+The app UI can read the shell it is running in via `window.desktopOta.shellOptions()` and open a
+window with `openNewWindow()`, so it never has to duplicate the configuration.
+
 ## In-app update notice
 
 After the window is open the launcher downloads a newer bundle in the background and sends
@@ -129,16 +166,19 @@ The preload API, defined in `desktop/src/preload/bridge.js`:
 | `desktopOta.onUpdateReady(fn)` | Subscribe; returns an unsubscribe function |
 | `desktopOta.applyPendingUpdate()` | Restart onto the pending bundle and reload |
 | `desktopOta.otaStatus()` | Manifest URL, active/pending/seeded versions |
+| `desktopOta.shellOptions()` | Tray/multiWindow/close behaviour and how many windows are open |
+| `desktopOta.openNewWindow()` | Open another window; rejects when the shell forbids it |
 | `desktopOta.launcherStatus()` / `onLauncherStatus(fn)` / `launcherRetry()` | Splash page only |
 
 ## Customization order
 
 1. `scripts/app-config.mjs` — central tokens (or rely on a global replace)
 2. `desktop/package.json` — launcher `version` (what `latest.json` reports)
-3. `desktop/electron-builder.yml` — `appId`, `productName`, targets, minimum OS
-4. `desktop/src/main/crypto.mjs` — `OTA_PUBLIC_KEY_HEX_*` (auto-synced on first `release:ota`)
-5. `desktop/launcher/index.html` — splash branding
-6. `app/src/lib/theme/brand.ts` — in-app brand
+3. `desktop/shell.config.json` — shell behaviour, via `pnpm shell:config`
+4. `desktop/electron-builder.yml` — `appId`, `productName`, targets, minimum OS
+5. `desktop/src/main/crypto.mjs` — `OTA_PUBLIC_KEY_HEX_*` (auto-synced on first `release:ota`)
+6. `desktop/launcher/index.html` — splash branding, and `launcher/tray-icon.png` for the tray
+7. `app/src/lib/theme/brand.ts` — in-app brand
 
 ## Pitfalls
 
@@ -158,12 +198,19 @@ The preload API, defined in `desktop/src/preload/bridge.js`:
   available.
 - **Symlinks in bundles:** the extractor rejects them. `release:ota` copies with `dereference: true`,
   so a symlink means something upstream changed.
+- **Shell config is packaged:** `shell.config.json` ships inside the app, so an installed copy
+  needs a new `pnpm release:desktop` to pick up a change. It is a product decision, not a user
+  preference. `{UPPER}_SHELL_CONFIG=/path/to.json` overrides it for a dev run.
+- **`onLastWindowClosed: keepRunning`** leaves the bundle server listening on
+  `__APP_PORT_PROD__` after the window closes. That is the point (the next window opens with no
+  boot), but it means the process only exits through Quit.
 
 ## Verify
 
 ```bash
 # After placeholder replacement
-pnpm test:desktop                  # zip reader + version ordering
+pnpm shell:config --list           # shell behaviour, with validation warnings
+pnpm test:desktop                  # zip reader, versions, shell options, config wizard
 pnpm dev:desktop                   # Next dev server + Electron shell
 pnpm release:ota 0.0.1 --dry-run   # needs app/ built for standalone
 pnpm build:desktop                 # local DMG, unsigned

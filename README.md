@@ -23,6 +23,29 @@ ABI would invalidate every published bundle on an Electron upgrade. The launcher
 `server.js` on a **Node 22 binary packaged beside the app** (`resources/node`), exactly as the Tauri
 version did with its sidecar. Upgrading Electron never touches the bundle contract.
 
+## Shell behaviour is an option, not a fork
+
+Tray icon, multiple windows (`Cmd/Ctrl+N`), whether the close button quits or hides, whether a
+tray app launches with a window at all — all of it is one config file plus one wizard, so you
+choose it while scaffolding and change it later without touching launcher code:
+
+```bash
+pnpm shell:config                     # wizard: pick a preset, then fine-tune
+pnpm shell:config --preset tray-app   # or go straight to a preset
+pnpm shell:config --list              # what is set right now
+```
+
+| Preset | Behaviour |
+|--------|-----------|
+| `single-window` | One window; closing it exits. The default. |
+| `multi-window` | `Cmd/Ctrl+N` opens another window; closing them all exits. |
+| `tray-app` | Tray icon, close hides the window, app stays resident. |
+| `menu-bar-only` | Tray only: no window and no macOS dock icon at launch. |
+
+Full reference: [`docs/SHELL_OPTIONS.md`](docs/SHELL_OPTIONS.md). Combinations that would leave the
+app with no window and no way to open one are refused rather than written, and the launcher falls
+back at runtime if the file says so anyway.
+
 ## Placeholders
 
 Replace every `__APP_*__` token before building (see [`AGENT.md`](AGENT.md)).
@@ -56,5 +79,6 @@ configured.
 pnpm test:desktop
 ```
 
-Covers the zip reader (including zip-slip, symlink and CRC rejection) and version ordering — the
-two places where a bug would either break every update or let an unverified file onto disk.
+Covers the zip reader (zip-slip, symlink and CRC rejection), version ordering, the shell option
+schema and its validation, and the config wizard — the places where a bug would break every
+update, let an unverified file onto disk, or ship an app the user cannot reach.

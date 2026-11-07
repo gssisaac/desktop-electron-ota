@@ -15,8 +15,13 @@ directories:
 
 files:
   - package.json
+  # The shell behaviour (tray, multiple windows, close/quit) is read from here at startup, so it
+  # has to be inside the asar — see docs/SHELL_OPTIONS.md.
+  - shell.config.json
   - src/**/*
   - launcher/**/*
+  # Fallback the tray falls back to when tray.icon names a file that is not there.
+  - build/icon.png
   - '!**/*.map'
   - '!test/**'
 

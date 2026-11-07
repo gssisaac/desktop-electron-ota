@@ -9,10 +9,20 @@ import { app } from 'electron';
 import * as apiBridge from './api-bridge.mjs';
 import * as bundles from './bundle-manager.mjs';
 import { log } from './log.mjs';
-import { navigateMainWindow, reloadMainWindow, send } from './window.mjs';
+import { broadcast, reloadAllWindows, setTargetUrl } from './shell/windows.mjs';
 
 export const STATUS_CHANNEL = 'launcher:status-changed';
 export const UPDATE_READY_CHANNEL = 'ota:update-ready';
+
+/**
+ * Hooks the shell registers so the boot sequence can stay unaware of the tray. `index.mjs`
+ * points `onUpdateReady` at `refreshTray`, which is what puts "Restart Now" in the tray menu.
+ */
+let hooks = { onUpdateReady: () => {} };
+
+export function setShellHooks(next) {
+  hooks = { ...hooks, ...next };
+}
 
 /** @typedef {{ seq: number, phase: string, message: string, progress: number|null, detail: string|null }} LauncherStatus */
 
@@ -26,7 +36,7 @@ export function launcherStatus() {
 
 function publish(phase, message, progress = null, detail = null) {
   status = { seq: status.seq + 1, phase, message, progress, detail };
-  send(STATUS_CHANNEL, status);
+  broadcast(STATUS_CHANNEL, status);
 }
 
 const megabytes = (bytes) => bytes / 1_048_576;
@@ -74,7 +84,9 @@ async function boot() {
   await bundles.pruneInactive(bundle);
 
   publish('ready', 'Opening __APP_NAME__…');
-  await navigateMainWindow(`${apiBridge.origin()}/`);
+  // Points every open window at the server, and makes windows opened later start there too —
+  // including the first one when the app launched in the background with no window at all.
+  await setTargetUrl(`${apiBridge.origin()}/`);
   return bundle;
 }
 
@@ -96,7 +108,8 @@ export async function spawnBoot() {
 
   try {
     await bundles.prepareUpdate(app.getVersion(), (version) => {
-      send(UPDATE_READY_CHANNEL, { version });
+      broadcast(UPDATE_READY_CHANNEL, { version });
+      hooks.onUpdateReady(version);
     });
   } catch (err) {
     log.warn(`background update failed: ${err.message}`);
@@ -125,7 +138,7 @@ export async function applyPendingUpdate() {
       throw new Error(`${err.message}\n\n__APP_NAME__ ${previous.version} is still running.`);
     }
     await bundles.pruneInactive(bundle);
-    reloadMainWindow();
+    reloadAllWindows();
   } finally {
     booting = false;
   }

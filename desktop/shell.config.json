@@ -1,0 +1,24 @@
+{
+  "singleInstance": true,
+  "tray": {
+    "enabled": false,
+    "showWindowOnLaunch": true,
+    "icon": "launcher/tray-icon.png",
+    "tooltip": "",
+    "leftClickOpensWindow": true
+  },
+  "windows": {
+    "multiWindow": false,
+    "newWindowAccelerator": "CmdOrCtrl+N",
+    "maxWindows": 8,
+    "closeAction": "close",
+    "onLastWindowClosed": "quit",
+    "rememberState": true,
+    "width": 1280,
+    "height": 840,
+    "minWidth": 960,
+    "minHeight": 640
+  },
+  "dock": "visible",
+  "launchAtLogin": false
+}
