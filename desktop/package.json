@@ -1,0 +1,20 @@
+{
+  "name": "__APP_SLUG__-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "__APP_NAME__ desktop launcher (Electron shell for full-stack OTA bundles)",
+  "author": "__APP_NAME__",
+  "main": "src/main/index.mjs",
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "predev": "node ../scripts/prepare-node-runtime.mjs",
+    "dev": "electron .",
+    "prebuild": "node ../scripts/prepare-node-runtime.mjs && node ../scripts/stage-seed-bundle.mjs",
+    "build": "electron-builder",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  }
+}

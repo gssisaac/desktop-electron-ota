@@ -1,0 +1,9 @@
+node_modules
+release
+dist
+.env
+.node-cache
+resources/node/*
+!resources/node/.gitkeep
+resources/seed-bundle/*
+!resources/seed-bundle/.gitkeep

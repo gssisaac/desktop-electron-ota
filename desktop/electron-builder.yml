@@ -1,0 +1,58 @@
+# electron-builder config for the __APP_NAME__ launcher.
+#
+# The installer carries three things: the Electron shell, the Node.js runtime OTA bundles run on
+# (`resources/node`, staged by scripts/prepare-node-runtime.mjs), and the current app bundle
+# (`resources/seed-bundle`, staged by scripts/stage-seed-bundle.mjs). Both live outside the asar
+# so the launcher can spawn the runtime and unzip the seed.
+appId: __APP_IDENTIFIER__
+productName: __APP_NAME__
+copyright: © __APP_NAME__
+
+asar: true
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - package.json
+  - src/**/*
+  - launcher/**/*
+  - '!**/*.map'
+  - '!test/**'
+
+mac:
+  category: public.app-category.productivity
+  target: [dmg]
+  icon: build/icon.icns
+  minimumSystemVersion: '11.0'
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # @electron/osx-sign signs every Mach-O file it finds in the bundle, Resources/node included.
+  # `pnpm release:desktop` fails the build if that binary comes out unsigned.
+  notarize: true
+  extraResources:
+    - from: resources/node/node
+      to: node
+    - from: resources/seed-bundle
+      to: seed-bundle
+      filter: ['version', 'bundle.zip']
+
+dmg:
+  artifactName: ${productName}_${version}_${arch}.${ext}
+
+win:
+  target: [nsis]
+  icon: build/icon.ico
+  extraResources:
+    - from: resources/node/node.exe
+      to: node.exe
+    - from: resources/seed-bundle
+      to: seed-bundle
+      filter: ['version', 'bundle.zip']
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}_${version}_${arch}-setup.${ext}
